@@ -1,0 +1,133 @@
+/* styles/global.css */
+body {
+  margin: 0;
+  font-family: 'Arial', sans-serif;
+  background-color: #f7f7f7;
+}
+
+h1 {
+  color: #333;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background-color: #0056b3;
+  transform: scale(1.05);
+}
+
+input {
+  padding: 10px;
+  margin-right: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 200px;
+  /* Define uma largura fixa */
+}
+
+div.playlist {
+  border: 1px solid #ccc;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  /* Adiciona bordas arredondadas */
+  background-color: #ffffff;
+  /* Cor de fundo branca */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  /* Sombra leve */
+}
+
+img {
+  display: block;
+}
+
+img,
+video,
+iframe {
+  width: 100%;
+  /* Altera para 100% da largura do contêiner */
+  height: auto;
+  /* Mantém a proporção da altura */
+  object-fit: cover;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  /* Bordas arredondadas nas mídias */
+}
+
+.drop-area {
+  border: 2px dashed #007bff;
+  /* Altera a cor da borda */
+  padding: 20px;
+  margin-top: 10px;
+  text-align: center;
+  border-radius: 8px;
+  /* Bordas arredondadas */
+  background-color: #f9f9f9;
+  /* Cor de fundo clara */
+}
+
+/* styles/Playlists.module.css */
+.container {
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  padding: 15px;
+  /* Aumenta o padding para mais espaço */
+  margin: 10px 0;
+  /* Margem vertical */
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  /* Bordas arredondadas */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  /* Sombra leve */
+  transition: background-color 0.3s ease;
+  /* Transição para cor de fundo */
+}
+
+li:hover {
+  background-color: #e0e0e0;
+  /* Cor de fundo ao passar o mouse */
+}
+
+.drop-area {
+  border: 2px dashed #007bff;
+  padding: 20px;
+  text-align: center;
+  margin: 20px 0;
+  border-radius: 8px;
+  /* Bordas arredondadas */
+  background-color: #f9f9f9;
+  /* Cor de fundo clara */
+}
+
+img,
+video,
+iframe {
+  display: block;
+  margin: 10px 0;
+}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio de Hambúrguer</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #ff914d;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2rem;
+        }
+
+        .menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 300px;
+            text-align: center;
+        }
+
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin: 10px 0;
+            color: #ff914d;
+        }
+
+        .card p {
+            padding: 0 15px;
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .price {
+            font-size: 1.2rem;
+            color: #333;
+            margin: 15px 0;
+            font-weight: bold;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🍔 Burguer Queen</h1>
+    </header>
+    <main class="menu" id="menu"></main>
+
+    <script>
+        const apiUrl = 'https://backend-eg4g.onrender.com/api/cardapio';
+        const localStorageKey = 'cachedCardapio';
+
+        // Função para verificar conexão com a internet
+        function isOnline() {
+            return navigator.onLine;
+        }
+
+        // Função para carregar os itens do cardápio
+        async function carregarCardapio() {
+            const menuDiv = document.getElementById('menu');
+            menuDiv.innerHTML = '<p>Carregando o cardápio...</p>';
+
+            const cachedData = localStorage.getItem(localStorageKey);
+
+            // Se offline, carregue do cache local
+            if (!isOnline() && cachedData) {
+                console.warn('Sem conexão com a internet. Carregando do cache.');
+                exibirCardapio(JSON.parse(cachedData));
+                return;
+            }
+
+            try {
+                // Se online, tente buscar do backend
+                const response = await fetch(apiUrl);
+                const itens = await response.json();
+
+                // Salve os dados no Local Storage e atualize a exibição
+                localStorage.setItem(localStorageKey, JSON.stringify(itens));
+                exibirCardapio(itens);
+            } catch (error) {
+                console.error('Erro ao buscar do backend:', error);
+                if (cachedData) {
+                    console.warn('Carregando dados do cache devido ao erro.');
+                    exibirCardapio(JSON.parse(cachedData));
+                } else {
+                    menuDiv.innerHTML = '<p>Não foi possível carregar o cardápio. Verifique sua conexão.</p>';
+                }
+            }
+        }
+
+        // Função para exibir o cardápio
+        function exibirCardapio(itens) {
+            const menuDiv = document.getElementById('menu');
+            menuDiv.innerHTML = '';
+
+            itens.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <img src="${item.imagem}" alt="${item.nome}">
+                    <h2>${item.nome}</h2>
+                    <p>${item.descricao}</p>
+                    <span class="price">R$ ${item.preco.toFixed(2)}</span>
+                `;
+                menuDiv.appendChild(card);
+            });
+        }
+
+        // Inicializar o carregamento
+        carregarCardapio();
+
+        // Monitore mudanças na conexão
+        window.addEventListener('online', () => {
+            console.log('Conexão restaurada! Atualizando o cardápio...');
+            carregarCardapio();
+        });
+
+        window.addEventListener('offline', () => {
+            console.warn('Conexão perdida. Mostrando o cache local.');
+        });
+    </script>
+</body>
+
+</html>

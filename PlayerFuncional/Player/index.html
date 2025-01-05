@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player</title>
+    <script>
+        let monitores = []; // Armazenar os monitores carregados
+        let currentMonitorId = null; // Monitor selecionado
+        let currentPlaylist = null; // Playlist do monitor
+        let cachedMedia = []; // Armazenar as mídias pré-carregadas
+        let mediaIndex = 0; // Índice da mídia atual
+
+        // Função para carregar monitores e preencher o seletor
+        async function carregarMonitores() {
+            try {
+                const response = await fetch('https://backend-eg4g.onrender.com/Monitores');
+                if (!response.ok) {
+                    throw new Error(`Erro na requisição: ${response.status}`);
+                }
+
+                // Carrega os monitores da resposta
+                monitores = await response.json();
+
+                const select = document.getElementById("monitorSelector");
+                select.innerHTML = ""; // Limpa as opções para evitar duplicação
+
+                // Adiciona a opção padrão
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = "Selecione o monitor";
+                select.appendChild(option);
+
+                // Adiciona as opções de monitores ao seletor
+                monitores.forEach(monitor => {
+                    const option = document.createElement("option");
+                    option.value = monitor._id; // ID do monitor
+                    option.textContent = monitor.name; // Nome do monitor
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar monitores:', error);
+            }
+        }
+
+        // Função para carregar a playlist do monitor selecionado
+        async function carregarPlaylist(monitorId) {
+            const monitor = monitores.find(m => m._id === monitorId);
+            if (!monitor || !monitor.playlist) {
+                console.log("Monitor ou playlist não encontrado");
+                return;
+            }
+
+            currentMonitorId = monitorId;
+            currentPlaylist = monitor.playlist;
+            mediaIndex = 0; // Reseta o índice das mídias
+            await preCarregarMidias(); // Carrega as mídias
+        }
+
+
+        const CACHE_NAME = 'ArquivosPlayList';
+        async function baixarArquivo(arq) {
+            const cache = await caches.open(CACHE_NAME);
+
+            // Tenta buscar do cache primeiro
+            const cachedResponse = await cache.match(arq.name);
+            if (cachedResponse) {
+                if (arq.tipo == 3) {  // Para texto
+                    arq.dados = await cachedResponse.text();
+                } else {
+                    const blob = await cachedResponse.blob();
+                    arq.dados = URL.createObjectURL(blob);
+                }
+                return;
+            }
+
+            // Se não estiver no cache, faz o fetch e armazena no cache
+            return fetch(arq.url)
+                .then(async function (response) {
+                    if (!response.ok) throw new Error('Erro no Download do Arquivo ' + arq.url);
+                    const responseClone = response.clone();
+                    if (arq.name.endsWith(".txt")) { // Para texto,
+                        arq.dados = await response.text();
+                    } else {
+                        const myBlob = await response.blob();
+                        arq.dados = URL.createObjectURL(myBlob); // Cria um URL a partir do blob
+                    }
+                    await cache.put(arq.name, responseClone);
+                })
+                .catch(e => {
+                    arq.erro = e;
+                });
+        }
+
+        // Função para pré-carregar todas as mídias da playlist
+        async function preCarregarMidias() {
+            cachedMedia = []; // Limpa o cache de mídias
+            console.log(currentPlaylist.midias);
+
+            for (let media of currentPlaylist.midias) {
+
+                // const cachedMediaItem = { type: "", content: null };
+
+                // if (media.url.endsWith(".mp4")) { // Pré-carregar vídeos
+                //     cachedMediaItem.type = "video";
+                //     const videoBlob = await fetch(media.url).then(res => res.blob());
+                //     cachedMediaItem.content = URL.createObjectURL(videoBlob);
+                // } else if (media.url.endsWith(".txt")) { // Pré-carregar textos
+                //     cachedMediaItem.type = "text";
+                //     cachedMediaItem.content = await fetch(media.url).then(res => res.text());
+                // } else { // Pré-carregar imagens
+                //     cachedMediaItem.type = "image";
+                //     const imageBlob = await fetch(media.url).then(res => res.blob());
+                //     cachedMediaItem.content = URL.createObjectURL(imageBlob);
+                // }
+
+                // cachedMedia.push(cachedMediaItem);
+                cachedMedia.push(baixarArquivo(media));
+            }
+
+            await Promise.all(cachedMedia)
+
+
+            console.log("Mídias pré-carregadas com sucesso!");
+            mostrarArquivo(); // Exibe a primeira mídia
+        }
+
+
+        var pAtual = 0;
+        function mostrarArquivo() {
+            pararTempo();
+
+            var arq = currentPlaylist.midias[pAtual];
+            var objectURL = arq.dados;
+            if (arq.name.endsWith(".txt")) {
+                document.querySelector("#canvas").innerHTML = `${objectURL}`;
+                iniciarTempo();
+            } else {
+                if (arq.name.endsWith(".mp4")) {
+                    document.querySelector("#canvas").innerHTML = `<video onended="mostrarArquivo()" src="${objectURL}" autoplay muted ></video>`;
+                }
+                else if (arq.name.endsWith(".html")) {
+                    // Renderiza um arquivo HTML em um iframe
+                    canvas.innerHTML = `
+    <iframe src="${objectURL}" style="width: 100vw; height: 100vh; border: none; position: absolute; top: 0; left: 0;">
+    </iframe>
+`;
+                    iniciarTempo();
+                } else {
+                    document.querySelector("#canvas").innerHTML = `<img src="${objectURL}" alt="${arq.link}">`;
+                    iniciarTempo();
+                }
+            }
+
+            pAtual++;
+            if (pAtual > currentPlaylist.midias.length - 1)
+                pAtual = 0;
+        }
+
+        var intervalos = 0;
+        function iniciarTempo() {
+            intervalos = setInterval(mostrarArquivo, 5000);
+        }
+        function pararTempo() {
+            clearInterval(intervalos);
+        }
+
+        // Função para exibir a mídia atual
+        function mostrarMidiaAtual() {
+            const media = cachedMedia[mediaIndex];
+            let mediaElement;
+
+            if (media.type === "video") {
+                mediaElement = document.createElement("video");
+                mediaElement.src = media.content;
+                mediaElement.autoplay = true;
+                mediaElement.muted = true;
+                mediaElement.style.width = "100%";
+                mediaElement.onended = () => proximaMidia();
+            } else if (media.type === "text") {
+                mediaElement = document.createElement("div");
+                mediaElement.textContent = media.content;
+                mediaElement.style.whiteSpace = "pre-wrap";
+                mediaElement.style.backgroundColor = "#f4f4f9";
+                mediaElement.style.padding = "10px";
+
+                setTimeout(proximaMidia, 5000); // Troca de mídia após 5 segundos
+            } else if (media.type === "image") {
+                mediaElement = document.createElement("img");
+                mediaElement.src = media.content;
+                mediaElement.style.width = "100%";
+                mediaElement.style.maxHeight = "100%";
+
+                setTimeout(proximaMidia, 5000); // Troca de mídia após 5 segundos
+            }
+
+            const canvas = document.getElementById("canvas");
+            canvas.innerHTML = ""; // Limpa o conteúdo anterior
+            canvas.appendChild(mediaElement);
+        }
+
+        // Função para ir para a próxima mídia
+        function proximaMidia() {
+            mediaIndex = (mediaIndex + 1) % cachedMedia.length; // Volta ao início quando chega ao final
+            if (mediaIndex === 0) {
+                // Quando terminar de exibir todas as mídias, recarrega as mídias e verifica se houve mudança
+                carregarPlaylist(currentMonitorId);
+            } else {
+                mostrarMidiaAtual(); // Exibe a próxima mídia
+            }
+        }
+
+        // Função para verificar o monitor selecionado e carregar a playlist
+        function verificarMonitor() {
+            const monitorId = document.getElementById("monitorSelector").value;
+            if (monitorId) {
+                carregarPlaylist(monitorId); // Carrega as mídias da playlist do monitor selecionado
+            } else {
+                console.log("Nenhum monitor selecionado.");
+            }
+        }
+
+        // Carrega os monitores ao carregar a página
+        window.onload = carregarMonitores;
+
+        // Adiciona evento de clique no botão "Iniciar"
+        document.getElementById("startButton").addEventListener("click", () => {
+            const monitorId = document.getElementById("monitorSelector").value;
+            if (monitorId) {
+                carregarPlaylist(monitorId); // Inicia a apresentação de mídias do monitor selecionado
+            } else {
+                alert("Selecione um monitor primeiro.");
+            }
+        });
+
+    </script>
+    <style>
+        /* Estilo para zerar margens e preenchimentos */
+        div,
+        body,
+        html {
+            padding: 0;
+            margin: 0;
+            vertical-align: baseline;
+            list-style: none;
+            border: 0;
+        }
+
+        /* Estilo geral para a página */
+        body,
+        html,
+        #canvas {
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        /* Estilo para imagens e vídeos */
+        img,
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Estilo para o botão e o seletor */
+        #startButton,
+        #monitorSelector {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f8f8;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Seletor de monitores -->
+    <select id="monitorSelector" aria-label="Selecione o monitor" onchange="verificarMonitor()">
+        <option value="">Selecione o monitor</option>
+    </select>
+
+    <!-- Área onde as mídias serão exibidas -->
+    <div id="canvas"></div>
+</body>
+
+</html>
